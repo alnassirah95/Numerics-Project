@@ -22,6 +22,15 @@ function [ x_values, y_values ] = ...
 %   f_prime = @(x, y) x + y;
 %   [xs, ys] = rk_4( f_prime, 0, 0, 0.1, 10 )
 
+% Convert the initial conditions to row vectors. If the functions throw an
+% error, the initial conditions are not vectors, so we throw another error.
+try
+    initial_x = convert_to_row_vector( initial_x );
+    initial_y = convert_to_row_vector( initial_y );
+catch ME
+    error( 'Initial conditions are not vectors.' )
+end 
+
 % By feeding in initial_x and initial_y as row vectors, we can compute
 % RK-4 on multiple initial conditions at once.
 % To do this, we first store the size of the initial_x and initial_y
