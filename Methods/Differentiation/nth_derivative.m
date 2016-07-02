@@ -41,41 +41,88 @@ angle_shift = conj( cos(2 * pi / steps) + sin(2 * pi / steps) * 1i );
 % each step. Again, we take the conjugate of this angle.
 half_angle_shift = conj( cos(pi / steps) + sin(pi / steps) * 1i );
 
-% We store the offset from a for each step in the following variable. In
-% order to compute the value of z at the beginning of each step, we
-% calculate a + offsets
-offsets = radius * exp( linspace( 0, 2 * pi, steps + 1 ) * 1i );
-
-% We also store the offset from a for the end of each step in the following
-% variable. Again, to calculate the value of z at the end of each step, we
-% calculate a + end_offsets.
-end_offsets = offsets .* angle_shift;
+% We store the current computed value of the integral in the following
+% variable.
+integral = 0;
 
 % We store the equation f(z) / (z - a)^(n + 1) in an anonymous function so
-% that we don't have to write the above equation multiple times.
+% that we don't have to write the equation we are integrating over multiple
+% times.
 contour_fn = @(z) f(z) ./ ( (z - a) .^ (n + 1) );
 
-% Now we compute the part of Simpson's rule that is "inside the
-% parentheses" first and store it in a variable.
-integral = contour_fn( offsets + a ) + ...
-            4 * contour_fn( half_angle_shift * offsets + a ) + ...
-            contour_fn( end_offsets + a );
+% We store the angle around the point that we are currently at for in the
+% following variable. This tells us where we should start integrating at
+% the beginning of every batch later on.
+current_angle = 0 + 0i;
 
-% Now we multiply by step size by subtracting offsets from end_offsets and
-% taking the elementwise product.
-integral = integral .* (offsets - end_offsets);
+% For extremely large numbers of steps, simply allocating memory for an
+% offset for the beginning and end of each step can be extremely
+% inefficient and may cause the program to crash. For that reason, we
+% compute batchs of 10 million (1e7) steps at a time.
+while steps > 0
+    % Get the number of steps that should be computed in this batch. If the
+    % number of remaining steps is greater than 10 million, we limit the
+    % batch size to 10 million (1e7).
+    batch_steps = steps;
+    steps = steps - 1e7;
+    if steps >= 1e7
+        batch_steps = 1e7;
+    end
+    
+    % Compute what the angle will be at the end of the current batch. If
+    % this isn't our last batch (i.e. steps > 0) then we lower the angle.
+    end_angle = 2 * pi;
+    if steps > 0
+        end_angle = 2 * pi / double( idivide( steps, uint16(10000000) ) );
+    end
+    
+    % We store the offset from a for each step in the following variable. 
+    % In order to compute the value of z at the beginning of each step, we
+    % calculate a + offsets
+    offsets = radius * exp( ...
+        linspace( current_angle, end_angle, batch_steps + 1 ) * 1i );
 
-% Finally, we sum over all the steps and divide by 6 (due to Simpson's 
-% rule) in order to finish computing the integral over the circle.
-integral = sum(integral(:)) / 6;
+    % We also store the offset from a for the end of each step in the 
+    % following variable. Again, to calculate the value of z at the end of 
+    % each step, we calculate a + end_offsets.
+    end_offsets = offsets .* angle_shift;
+    
+    % Adjust the current angle for the next batch.
+    current_angle = end_angle * angle_shift;
+    
+    % Now we compute the part of Simpson's rule that is "inside the
+    % parentheses" for the current batch first and store it in a variable.
+    batch_integral = contour_fn( offsets + a ) + ...
+                    4 * contour_fn( half_angle_shift * offsets + a ) + ...
+                    contour_fn( end_offsets + a );
+                
+    % Now we multiply by step size by subtracting offsets from end_offsets 
+    % and taking the elementwise product.
+    batch_integral = batch_integral .* (offsets - end_offsets);
+    
+    % Finally, we sum over all the steps. We put off dividing by 6 (per
+    % Simpson's rule) until we have finished iterating for a little
+    % additional efficiency.
+    batch_integral = sum(batch_integral(:));
+    
+    % We update the integral variable with the value of the integral over
+    % the current batch.
+    integral = integral + batch_integral;
+    
+    % Since the offset and end_offset variables take up lots of memory for
+    % high numbers of steps, we clear them before starting the next
+    % iteration.
+    clear offsets;
+    clear end_offsets;
+end
         
 % Closures aren't automatically garbage-collected, so we have to clear the
-% closure that we created (contour_fn) from memory. We also clear offsets
-% and end_offsets from memory since they take up a large amount of space
-% for large numbers of steps.
+% closure that we created (contour_fn) from memory.
 clear contour_fn;
-clear offsets;
-clear end_offsets;
+
+% We put off dividing by 6 (as according to Simpson's rule) while we were
+% iterating; we do so now.
+integral = integral / 6;
 
 % Finally, now that we have computed the contour integral, we multiply by
 % n! / (2 * pi * i) to get the nth derivative (by Cauchy's formula).
