@@ -59,7 +59,7 @@ function [ x_values, y_values ] = ...
 %   function_array{i} = @(x, y) x + y(i);
 % end
 % [xs, ys] = generalized_rk_4( function_array, initial_x, initial_ys, ...
-%               steps, step_size );
+%               step_size, steps );
 % plot( xs, ys )
 
 % Find the number of functions and the number of initial conditions.
@@ -79,7 +79,7 @@ end
 if num_conditions(1) == 1
     % We need the initial conditions to be a column vector, so we transpose
     % them (since the first dimension of the size matrix is 1).
-    initial_conditions = transpose( initial_ys );
+    initial_ys = initial_ys';
     num_conditions = [num_conditions(2), num_conditions(1)];
 end
 
@@ -111,7 +111,7 @@ y_values = zeros( num_functions, steps + 1 );
 
 % Set the first column of values in the y_values matrix equal to the
 % initial conditions (which, from earlier, is a column vector).
-y_values(:, 1) = initial_conditions;
+y_values(:, 1) = initial_ys;
 
 % Vectors to store the K values at each step.
 K1 = zeros( num_functions, 1 );
