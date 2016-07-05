@@ -1,0 +1,30 @@
+function [y1,y2,t ] = RK4_2(f1,f2,y_1,y_2,x0,xf,h)
+%   rk4 for coupled odes
+%   y1' = f1(y1,y2,x);
+%   y2' = f2(y1,y2,x); 
+%   Initial conditions: y1(x0) = y_1, y2(x0) = y_2
+%   x interval x0 <= x<= xf, Step size = h
+
+y1(1) = y_1;
+y2(1) = y_2;
+t(1) = x0;
+N = ceil(xf/h);
+for i= 1:N   
+    t(i+1) = t(i) + h;
+    ky11 = h*f1(t(i),y1(i),y2(i));
+    ky21 = h*f2(t(i),y1(i),y2(i));
+    
+    ky12 = h*f1(t(i)+h/2,y1(i)+ky11/2,y2(i)+ ky21/2);
+    ky22 = h*f2(t(i)+h/2,y1(i)+ky11/2,y2(i)+ ky21/2);
+    
+    ky13 = h*f1(t(i)+h/2,y1(i)+ky12/2,y2(i)+ ky22/2);
+    ky23 = h*f2(t(i)+h/2,y1(i)+ky12/2,y2(i)+ ky22/2);
+
+    ky14 = h*f1(t(i)+h/2,y1(i)+ky13/2,y2(i)+ ky23/2);
+    ky24 = h*f2(t(i)+h/2,y1(i)+ky13/2,y2(i)+ ky23/2);
+    
+    y1(i+1) = y1(i) + 1/6*(ky11 + 2*ky12 + 2*ky13 + ky14); 
+    y2(i+1) = y2(i) + 1/6*(ky21 + 2*ky22 + 2*ky23 + ky24); 
+end
+end
+
